@@ -3,7 +3,7 @@ version: '3.8'
 services:
   db:
     image: postgres:15-alpine
-    container_name: pedant_db
+    container_name: em_db
     restart: always
     env_file:
       - .env
@@ -11,11 +11,30 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   adminer:
     image: adminer
     container_name: adminer
     ports:
       - "8080:8080"
     restart: always
+    depends_on:
+      - db
+
+  migrator:
+    build: .
+    container_name: em_migrator
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    command: alembic upgrade head
+
 volumes:
   postgres_data:
